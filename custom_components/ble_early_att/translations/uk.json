@@ -1,0 +1,29 @@
+{
+  "title": "BLE Early ATT",
+  "config": {
+    "step": {
+      "user": {
+        "description": "Інтеграція стежить за локальними адаптерами Bluetooth цього хоста. Коли адаптер передає перший пакет нового з'єднання зарано, ядро його відкидає. Якщо цей пакет є запитом ATT MTU, інтеграція надсилає відповідь, на яку чекає пристрій. Натисніть «Надіслати», щоб додати інтеграцію."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Інтеграцію вже додано. Один запис охоплює всі локальні адаптери Bluetooth цього хоста.",
+      "monitor_unavailable": "Home Assistant не може відкрити монітор HCI хоста: {error}\nІнтеграції потрібен Home Assistant на Linux з правом CAP_NET_RAW. Home Assistant OS і контейнер Home Assistant з network_mode host дають це право. Без локального адаптера Bluetooth інтеграції нема чого робити."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "early_packets_dropped": {
+        "name": "Відкинуті ранні пакети"
+      },
+      "mtu_requests_answered": {
+        "name": "Відповіді на запити MTU"
+      }
+    }
+  },
+  "exceptions": {
+    "monitor_unavailable": {
+      "message": "Не вдалося відкрити монітор HCI хоста: {error}. Інтеграції потрібен Linux і право CAP_NET_RAW."
+    }
+  }
+}

@@ -13,14 +13,17 @@ import pytest
 
 from custom_components.ble_early_att import monitor
 from custom_components.ble_early_att.monitor import ANSWER_DELAY, EarlyAttMonitor
+from custom_components.ble_early_att.watcher import MtuAnswer
 from tests.common import wait_until
 from tests.hci import (
     ADAPTER,
     HANDLE,
     connection_complete,
     disconnection_complete,
+    monitor_frame,
     mtu_request,
     mtu_response_from_host,
+    new_index,
 )
 
 
@@ -171,12 +174,66 @@ async def test_read_error_stops_the_reads(monitor_pair, caplog):
     reader, writer = monitor_pair
     loop = asyncio.get_running_loop()
     hci = EarlyAttMonitor(loop, _BrokenMonitor(reader), _Sent())
+    heard: list[bool] = []
+    hci.add_listener(lambda: heard.append(hci.reading))
     hci.start()
+    assert hci.reading
 
     writer.send(mtu_request())
     await wait_until(_logged(caplog, "Reading the HCI monitor failed"))
 
     assert loop.remove_reader(reader.fileno()) is False
+    # The sensors hear that the monitor stopped, and become unavailable
+    assert heard == [False]
+    hci.stop()
+
+
+async def test_listeners_hear_only_visible_changes(monitor_pair):
+    """A frame that changes no adapter and no count calls no listener."""
+    reader, writer = monitor_pair
+    hci = EarlyAttMonitor(asyncio.get_running_loop(), reader, _Sent())
+    heard: list[int] = []
+    remove = hci.add_listener(lambda: heard.append(hci.watcher.revision))
+    hci.start()
+
+    writer.send(new_index())
+    await wait_until(lambda: heard)
+    # A link without early packets opens, which changes no count
+    writer.send(connection_complete())
+    await wait_until(lambda: hci.watcher.still_needed(MtuAnswer(ADAPTER, HANDLE, b"")))
+    assert heard == [1]
+    writer.send(monitor_frame(1, b""))
+    await wait_until(lambda: not hci.watcher.adapters)
+
+    assert heard == [1, 2]
+    remove()
+    writer.send(new_index())
+    await wait_until(lambda: hci.watcher.adapters)
+    assert heard == [1, 2]
+    hci.stop()
+
+
+async def test_first_dropped_packet_of_an_adapter_is_logged_once(monitor_pair, caplog):
+    """The log tells once that the adapter has the problem, not at each link."""
+    reader, writer = monitor_pair
+    hci = EarlyAttMonitor(asyncio.get_running_loop(), reader, _Sent())
+    hci.start()
+    caplog.set_level(logging.INFO, logger=monitor.__name__)
+
+    adapters = hci.watcher.adapters
+    # Two links in two reads, so that the monitor reports twice
+    for total in (1, 2):
+        for frame in (disconnection_complete(), mtu_request(), connection_complete()):
+            writer.send(frame)
+        await wait_until(
+            lambda total=total: (
+                ADAPTER in adapters and adapters[ADAPTER].dropped.total() == total
+            )
+        )
+
+    logged = [r for r in caplog.records if "delivers the first packet" in r.message]
+    assert len(logged) == 1
+    assert "hci1" in logged[0].message
     hci.stop()
 
 

@@ -1,6 +1,9 @@
 {
   "domain": "ble_early_att",
   "name": "BLE Early ATT",
+  "after_dependencies": [
+    "bluetooth"
+  ],
   "codeowners": [
     "@alertua"
   ],

@@ -9,6 +9,7 @@ import os
 import socket
 import sys
 from collections.abc import Callable
+from datetime import UTC, datetime
 
 from .watcher import EarlyAttWatcher, MtuAnswer
 
@@ -78,14 +79,23 @@ class EarlyAttMonitor:
     ) -> None:
         """Take an open monitor socket, which `stop` closes, and a send to an adapter."""
         self.watcher = EarlyAttWatcher()
+        self.reading = False
         self._loop = loop
         self._monitor = monitor
         self._send = send
         self._timers: dict[tuple[int, int], asyncio.TimerHandle] = {}
+        self._listeners: list[Callable[[], None]] = []
+        self._reported_adapters: set[int] = set()
+
+    def add_listener(self, listener: Callable[[], None]) -> Callable[[], None]:
+        """Call the listener after each change of the adapters or their counts."""
+        self._listeners.append(listener)
+        return lambda: self._listeners.remove(listener)
 
     def start(self) -> None:
         """Read the monitor while the event loop runs."""
         self._loop.add_reader(self._monitor.fileno(), self._read)
+        self.reading = True
 
     def stop(self) -> None:
         """Stop the reads, drop the waiting answers and close the monitor."""
@@ -95,21 +105,11 @@ class EarlyAttMonitor:
             timer.cancel()
         self._timers.clear()
         self._monitor.close()
+        self.reading = False
 
     def _read(self) -> None:
-        while True:
-            try:
-                frame = self._monitor.recv(_MONITOR_FRAME_MAX)
-            except BlockingIOError:
-                return
-            except OSError as err:
-                _LOGGER.warning(
-                    "Reading the HCI monitor failed, so early ATT MTU requests stay "
-                    "unanswered until the integration reloads: %s",
-                    err,
-                )
-                self._loop.remove_reader(self._monitor.fileno())
-                return
+        revision = self.watcher.revision
+        while (frame := self._recv()) is not None:
             if (answer := self.watcher.feed(frame)) is not None:
                 key = (answer.adapter, answer.handle)
                 # A new link on the handle replaces the answer to a link that closed
@@ -118,6 +118,23 @@ class EarlyAttMonitor:
                 self._timers[key] = self._loop.call_later(
                     ANSWER_DELAY, self._answer, answer
                 )
+        if self.watcher.revision != revision or not self.reading:
+            self._changed()
+
+    def _recv(self) -> bytes | None:
+        try:
+            return self._monitor.recv(_MONITOR_FRAME_MAX)
+        except BlockingIOError:
+            return None
+        except OSError as err:
+            _LOGGER.warning(
+                "Reading the HCI monitor failed, so early ATT MTU requests stay "
+                "unanswered until the integration reloads: %s",
+                err,
+            )
+            self._loop.remove_reader(self._monitor.fileno())
+            self.reading = False
+            return None
 
     def _answer(self, answer: MtuAnswer) -> None:
         del self._timers[answer.adapter, answer.handle]
@@ -139,8 +156,22 @@ class EarlyAttMonitor:
                 err,
             )
             return
-        self.watcher.record_answer(answer)
+        self.watcher.record_answer(answer, datetime.now(UTC))
         _LOGGER.info(
             "Answered the ATT MTU request that the kernel dropped on hci%d",
             answer.adapter,
         )
+        self._changed()
+
+    def _changed(self) -> None:
+        for index, stats in self.watcher.adapters.items():
+            if index not in self._reported_adapters and stats.dropped.total():
+                self._reported_adapters.add(index)
+                _LOGGER.info(
+                    "hci%d delivers the first packet of a new link too early, and the "
+                    "kernel drops it. The integration answers such packets when they "
+                    "are ATT MTU requests",
+                    index,
+                )
+        for listener in list(self._listeners):
+            listener()

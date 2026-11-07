@@ -13,32 +13,20 @@ from tests.hci import ADAPTER, connection_complete, mtu_request
 
 
 async def test_loaded_entry_answers_and_unload_closes_the_monitor(
-    hass, enable_custom_integrations, monitor_pair
+    hass, loaded_entry, monitor_pair, feed_monitor, sent_packets
 ):
     """The entry reads the monitor while it is loaded and closes it at unload."""
-    reader, writer = monitor_pair
-    entry = MockConfigEntry(domain=DOMAIN)
-    entry.add_to_hass(hass)
-    sent: list[tuple[int, bytes]] = []
+    reader, _writer = monitor_pair
 
-    with (
-        patch("custom_components.ble_early_att.open_monitor", return_value=reader),
-        patch(
-            "custom_components.ble_early_att.send_to_adapter",
-            side_effect=lambda adapter, packet: sent.append((adapter, packet)),
-        ),
-    ):
-        assert await hass.config_entries.async_setup(entry.entry_id)
-        writer.send(mtu_request())
-        writer.send(connection_complete())
-        await wait_until(lambda: sent)
+    feed_monitor(mtu_request(), connection_complete())
+    await wait_until(lambda: sent_packets)
 
-    assert entry.state is ConfigEntryState.LOADED
-    assert isinstance(entry.runtime_data, EarlyAttMonitor)
-    assert [adapter for adapter, _ in sent] == [ADAPTER]
+    assert loaded_entry.state is ConfigEntryState.LOADED
+    assert isinstance(loaded_entry.runtime_data, EarlyAttMonitor)
+    assert [adapter for adapter, _ in sent_packets] == [ADAPTER]
 
-    assert await hass.config_entries.async_unload(entry.entry_id)
-    assert entry.state is ConfigEntryState.NOT_LOADED
+    assert await hass.config_entries.async_unload(loaded_entry.entry_id)
+    assert loaded_entry.state is ConfigEntryState.NOT_LOADED
     assert reader.fileno() == -1
 
 
@@ -56,4 +44,5 @@ async def test_entry_without_the_monitor_fails_with_the_reason(
         assert not await hass.config_entries.async_setup(entry.entry_id)
 
     assert entry.state is ConfigEntryState.SETUP_ERROR
-    assert "Operation not permitted" in caplog.text
+    assert "Cannot open the HCI monitor" in entry.reason
+    assert "Operation not permitted" in entry.reason

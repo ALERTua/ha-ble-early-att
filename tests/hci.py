@@ -12,6 +12,12 @@ def monitor_frame(opcode: int, body: bytes) -> bytes:
     return struct.pack("<HHH", opcode, ADAPTER, len(body)) + body
 
 
+def new_index(address: str = ADAPTER_ADDRESS) -> bytes:
+    """Build the frame that reports an adapter, as the monitor sends after its bind."""
+    octets = bytes.fromhex(address.replace(":", ""))[::-1]
+    return monitor_frame(0, b"\x00\x01" + octets + b"hci1\x00\x00\x00\x00")
+
+
 def acl_rx(cid: int, payload: bytes, handle: int = HANDLE) -> bytes:
     """Build the first fragment of a packet that the controller delivers."""
     l2cap = struct.pack("<HH", len(payload), cid) + payload

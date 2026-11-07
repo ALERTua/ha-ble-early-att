@@ -1,0 +1,12 @@
+{
+  "entity": {
+    "sensor": {
+      "early_packets_dropped": {
+        "default": "mdi:bluetooth-off"
+      },
+      "mtu_requests_answered": {
+        "default": "mdi:bluetooth-transfer"
+      }
+    }
+  }
+}

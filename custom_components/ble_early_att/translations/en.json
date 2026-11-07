@@ -1,0 +1,29 @@
+{
+  "title": "BLE Early ATT",
+  "config": {
+    "step": {
+      "user": {
+        "description": "The integration watches the local Bluetooth adapters of this host. When an adapter delivers the first packet of a new link too early, the kernel drops it. If that packet is an ATT MTU request, the integration sends the answer that the device waits for. Select Submit to add the integration."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "The integration is already added. One entry covers all local Bluetooth adapters of this host.",
+      "monitor_unavailable": "Home Assistant cannot open the HCI monitor of the host: {error}\nThe integration needs Home Assistant on Linux with the CAP_NET_RAW capability. Home Assistant OS and the Home Assistant container with network_mode host give it. Without a local Bluetooth adapter the integration has nothing to do."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "early_packets_dropped": {
+        "name": "Early packets dropped"
+      },
+      "mtu_requests_answered": {
+        "name": "MTU requests answered"
+      }
+    }
+  },
+  "exceptions": {
+    "monitor_unavailable": {
+      "message": "Cannot open the HCI monitor of the host: {error}. The integration needs Linux and the CAP_NET_RAW capability."
+    }
+  }
+}

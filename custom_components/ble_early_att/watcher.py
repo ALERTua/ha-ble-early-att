@@ -11,6 +11,7 @@ dropped. This module has no I/O: it takes monitor frames and returns what to sen
 import struct
 from collections import Counter
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import StrEnum
 
 # HCI monitor opcodes, from the Linux kernel `include/net/bluetooth/hci_mon.h`
@@ -64,6 +65,7 @@ class AdapterStats:
     address: str | None = None
     dropped: Counter[PacketKind] = field(default_factory=Counter)
     answered: int = 0
+    last_answered: datetime | None = None
 
 
 @dataclass
@@ -91,6 +93,8 @@ class EarlyAttWatcher:
     def __init__(self) -> None:
         """Start with no adapters and no links."""
         self.adapters: dict[int, AdapterStats] = {}
+        # Grows with each change of the adapters or their counts
+        self.revision = 0
         self._early: dict[tuple[int, int], _EarlyLink] = {}
         self._open_links: set[tuple[int, int]] = set()
         self._answered_links: set[tuple[int, int]] = set()
@@ -110,11 +114,13 @@ class EarlyAttWatcher:
         elif opcode == MONITOR_NEW_INDEX and len(body) >= 8:
             address = ":".join(f"{octet:02X}" for octet in reversed(body[2:8]))
             self.adapters.setdefault(adapter, AdapterStats()).address = address
+            self.revision += 1
         elif opcode == MONITOR_CLOSE_INDEX:
             self._forget_links(adapter)
         elif opcode == MONITOR_DEL_INDEX:
             self._forget_links(adapter)
-            self.adapters.pop(adapter, None)
+            if self.adapters.pop(adapter, None) is not None:
+                self.revision += 1
         return None
 
     def still_needed(self, answer: MtuAnswer) -> bool:
@@ -122,10 +128,13 @@ class EarlyAttWatcher:
         key = (answer.adapter, answer.handle)
         return key in self._open_links and key not in self._answered_links
 
-    def record_answer(self, answer: MtuAnswer) -> None:
-        """Count an answer that was sent."""
+    def record_answer(self, answer: MtuAnswer, at: datetime) -> None:
+        """Count an answer that was sent at the given time."""
         self._answered_links.add((answer.adapter, answer.handle))
-        self.adapters.setdefault(answer.adapter, AdapterStats()).answered += 1
+        stats = self.adapters.setdefault(answer.adapter, AdapterStats())
+        stats.answered += 1
+        stats.last_answered = at
+        self.revision += 1
 
     def _on_acl_rx(self, adapter: int, body: bytes) -> None:
         if len(body) < 8:
@@ -187,6 +196,7 @@ class EarlyAttWatcher:
         if (early := self._early.pop(key, None)) is None:
             return None
         self.adapters.setdefault(adapter, AdapterStats()).dropped.update(early.kinds)
+        self.revision += 1
         if not early.kinds[PacketKind.ATT_MTU_REQUEST]:
             return None
         return MtuAnswer(adapter, key[1], _mtu_response(key[1]))

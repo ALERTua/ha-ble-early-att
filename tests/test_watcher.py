@@ -1,6 +1,7 @@
 """Tests of the watcher that finds the MTU requests the kernel dropped."""
 
 import struct
+from datetime import UTC, datetime
 
 import pytest
 
@@ -19,6 +20,7 @@ from tests.hci import (
     monitor_frame,
     mtu_request,
     mtu_response_from_host,
+    new_index,
 )
 
 
@@ -99,10 +101,33 @@ def test_recorded_answers_are_counted_once_per_link():
     *_, answer = _feed(watcher, mtu_request(), connection_complete())
     assert answer is not None
 
-    watcher.record_answer(answer)
+    sent_at = datetime(2026, 11, 7, 12, 30, tzinfo=UTC)
+
+    watcher.record_answer(answer, sent_at)
 
     assert watcher.adapters[ADAPTER].answered == 1
+    assert watcher.adapters[ADAPTER].last_answered == sent_at
     assert not watcher.still_needed(answer)
+
+
+@pytest.mark.parametrize(
+    ("frames", "changes"),
+    [
+        pytest.param([new_index()], 1, id="adapter_added"),
+        pytest.param([new_index(), monitor_frame(1, b"")], 2, id="adapter_removed"),
+        pytest.param([monitor_frame(1, b"")], 0, id="unknown_adapter_removed"),
+        pytest.param([mtu_request(), connection_complete()], 1, id="early_packet"),
+        pytest.param([connection_complete(), mtu_request()], 0, id="no_early_packet"),
+        pytest.param([disconnection_complete()], 0, id="link_closed"),
+    ],
+)
+def test_revision_grows_with_each_visible_change(frames: list[bytes], changes: int):
+    """The sensors redraw only when an adapter or one of its counts changed."""
+    watcher = EarlyAttWatcher()
+
+    _feed(watcher, *frames)
+
+    assert watcher.revision == changes
 
 
 @pytest.mark.parametrize(
@@ -188,9 +213,8 @@ def test_continuation_fragment_is_not_an_mtu_response():
 def test_new_index_names_the_adapter():
     """The monitor reports the address of each adapter when it opens."""
     watcher = EarlyAttWatcher()
-    address = bytes.fromhex(ADAPTER_ADDRESS.replace(":", ""))[::-1]
 
-    watcher.feed(monitor_frame(0, b"\x00\x01" + address + b"hci1\x00\x00\x00\x00"))
+    watcher.feed(new_index())
 
     assert watcher.adapters[ADAPTER].address == ADAPTER_ADDRESS
 
