@@ -1,0 +1,47 @@
+[project]
+name = "ha-ble-early-att"
+version = "0.1.0"  # Remember to change this in the manifest.json
+description = "A Home Assistant integration that answers the ATT MTU requests that a USB Bluetooth adapter delivers too early"
+readme = "README.md"
+requires-python = ">=3.14.2"  # Follows https://github.com/home-assistant/core/blob/dev/pyproject.toml
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "homeassistant>=2026.9.0",  # The minimum of hacs.json
+    "pre-commit-uv",
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+    "rust-just",
+    "pytest-homeassistant-custom-component",
+    "pytest-cov",
+    "ty",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.3.5"
+# The root conftest.py loads the Home Assistant test plugin, see its docstring.
+addopts = "-ra -q -p no:homeassistant"
+asyncio_mode = "auto"
+# The plugin configures the event loop of each test, and a loop takes this configuration only once.
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.coverage.report]
+# The same exclusions as the pyproject.toml of Home Assistant core
+exclude_lines = [
+    # Have to re-enable the standard pragma
+    "pragma: no cover",
+    # Don't complain about missing debug-only code:
+    "def __repr__",
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+    # TYPE_CHECKING and @overload blocks are never executed during pytest run
+    "if TYPE_CHECKING:",
+    "@overload",
+]
+
+[tool.ty.src]
+# The tests use mocks and wrong values on purpose, so ty checks the integration only.
+include = ["custom_components"]

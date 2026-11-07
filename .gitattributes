@@ -1,0 +1,33 @@
+# The repository stores LF, and git writes LF to the working tree on each operating system.
+* text=auto eol=lf
+
+# Source and configuration files
+*.py text eol=lf
+*.pyw text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.lock text eol=lf
+*.sh text eol=lf
+*.ps1 text eol=lf
+Justfile text eol=lf
+justfile text eol=lf
+.env.example text eol=lf
+
+# cmd.exe can read a bare LF incorrectly
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary files: git does not change their bytes and does not diff them
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.exe binary
+
+# uv.lock is generated: git does not merge it line by line, run `uv lock` again instead
+uv.lock merge=binary linguist-generated

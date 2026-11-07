@@ -1,0 +1,43 @@
+# /// script
+# dependencies = [
+#   "typer",
+# ]
+# ///
+"""Script to update version in pyproject.toml and manifest.json."""
+
+import json
+import subprocess
+from pathlib import Path
+
+# noinspection PyUnresolvedReferences,PyPackageRequirements
+import typer  # ty:ignore[unresolved-import]
+
+app = typer.Typer()
+
+
+@app.command()
+def update_version(
+    version: str = typer.Argument(..., help="New version to set"),
+) -> None:
+    """Update version in project files and run uv lock."""
+    # Update pyproject.toml via uv
+    # A list goes to uv without a shell; uv comes from the PATH of the developer
+    subprocess.run(["uv", "version", version], check=True)
+
+    # Update manifest.json
+    manifest_path = Path("custom_components/ble_early_att/manifest.json")
+    with manifest_path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    data["version"] = version
+
+    # The repository keeps LF, and Windows writes CRLF by default
+    with manifest_path.open("w", encoding="utf-8", newline="\n") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+    typer.echo(f"Version updated to {version}")
+
+
+if __name__ == "__main__":
+    app()

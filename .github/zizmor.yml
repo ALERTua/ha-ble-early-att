@@ -1,0 +1,7 @@
+# https://docs.zizmor.sh/configuration/
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # No Dependabot updates a commit SHA here. hassfest and the HACS action are meant to run at the newest version of their branch.
+        "*": ref-pin
