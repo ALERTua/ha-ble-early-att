@@ -9,9 +9,11 @@ entry point imports the plugin before any conftest runs. pytest reads
 ``pytest_plugins`` only in the conftest of the root folder.
 """
 
+import asyncio
 import socket
 import sys
 import types
+from collections.abc import Callable
 from typing import Any
 
 if sys.platform == "win32":
@@ -47,5 +49,17 @@ if sys.platform == "win32":
             socket.socket = blocked_socket
 
     socket.socketpair = _socketpair
+
+    def pytest_asyncio_loop_factories() -> dict[
+        str, Callable[[], asyncio.AbstractEventLoop]
+    ]:
+        """
+        Run each test on a selector loop, as Home Assistant runs on Linux.
+
+        The default loop of Windows has no ``add_reader``, and the integration
+        reads the HCI monitor with it.
+        """
+        return {"selector": asyncio.SelectorEventLoop}
+
 
 pytest_plugins = "pytest_homeassistant_custom_component.plugins"
