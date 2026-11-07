@@ -1,6 +1,6 @@
 # BLE Early ATT
 
-A Home Assistant integration that helps Bluetooth devices talk through some USB Bluetooth adapters.
+A Home Assistant integration that helps Bluetooth devices talk through some Bluetooth adapters, built-in or USB dongles.
 
 ## Do you need it?
 
@@ -16,11 +16,13 @@ Not sure? Install the integration and open the page of your Bluetooth adapter (S
 
 ## What goes wrong
 
-When some devices connect, the first thing that they do is ask: "How large can my messages be?" Some USB Bluetooth adapters give that question to Linux a moment too early, before they tell Linux that the connection exists. Linux does not know the connection yet, so it throws the question away. The device waits for an answer that never comes, and some devices then send no data at all.
+When some devices connect, the first thing that they do is ask: "How large can my messages be?" Some Bluetooth adapters give that question to Linux a moment too early, before they tell Linux that the connection exists. Linux does not know the connection yet, so it throws the question away. The device waits for an answer that never comes, and some devices then send no data at all.
 
 Which devices ask at once: for example, many devices that are built on the Nordic Semiconductor nRF5 SDK, which can send this question as soon as the device connects.
 
 Which adapters lose the question: the Realtek RTL8852BU (a Wi-Fi 6 and Bluetooth chip in many mini PCs) does it on every connection. Other users see the same Linux log line with Realtek RTL8761 dongles. Other adapters can have the same problem.
+
+An adapter on USB sends its news about connections and its data through two different USB channels. So Linux can get them in the wrong order. A built-in adapter can use USB inside the computer too, as the RTL8852BU does. So a built-in adapter can need this integration as much as a dongle.
 
 ## What the integration does
 

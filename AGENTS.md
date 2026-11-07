@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository. Keep changes minimal, 
 
 ## Project overview
 
-BLE Early ATT is a [Home Assistant](https://www.home-assistant.io/) custom integration (HACS). Some USB Bluetooth adapters deliver the first data packet of a new LE link before the event that reports the link. The Linux kernel drops that packet. When the packet is an ATT Exchange MTU Request, nobody answers it, and some devices then stay silent. This integration reads the HCI monitor channel of the host and sends the missing ATT Exchange MTU Response through a raw HCI socket. It needs Linux and the `CAP_NET_RAW` capability.
+BLE Early ATT is a [Home Assistant](https://www.home-assistant.io/) custom integration (HACS). Some Bluetooth adapters on USB, built-in ones too, deliver the first data packet of a new LE link before the event that reports the link. The Linux kernel drops that packet. When the packet is an ATT Exchange MTU Request, nobody answers it, and some devices then stay silent. This integration reads the HCI monitor channel of the host and sends the missing ATT Exchange MTU Response through a raw HCI socket. It needs Linux and the `CAP_NET_RAW` capability.
 
 Read `.claude/memory/MEMORY.md` before you start. It links the facts behind the design. Examples are the root cause, the rules of the fix, the traps of Home Assistant and of the tests, and the live check. When your work touches a topic of a line, read the file of that line. `README.md` explains the problem to a user.
 
