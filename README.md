@@ -55,7 +55,10 @@ The log tells once when an adapter loses its first packet, and once for each ans
 
 ## Installation
 
-1. In HACS, add `https://github.com/ALERTua/ha-ble-early-att` as a custom repository of the type Integration.
+1. Add the repository to HACS. Select this button, or add `https://github.com/ALERTua/ha-ble-early-att` in HACS as a custom repository of the type Integration.
+
+   [![Open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=ALERTua&repository=ha-ble-early-att&category=integration)
+
 2. Install "BLE Early ATT" and restart Home Assistant.
 3. Go to Settings → Devices & services → Add integration, and select "BLE Early ATT".
 
