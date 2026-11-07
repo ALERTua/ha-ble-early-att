@@ -6,17 +6,18 @@ Guidance for AI coding agents working in this repository. Keep changes minimal, 
 
 BLE Early ATT is a [Home Assistant](https://www.home-assistant.io/) custom integration (HACS). Some USB Bluetooth adapters deliver the first data packet of a new LE link before the event that reports the link. The Linux kernel drops that packet. When the packet is an ATT Exchange MTU Request, nobody answers it, and some devices then stay silent. This integration reads the HCI monitor channel of the host and sends the missing ATT Exchange MTU Response through a raw HCI socket. It needs Linux and the `CAP_NET_RAW` capability.
 
-The design, the measured facts and the steps are in `plans/0.1.0/`. Read `01-implementation-plan.md` first, then `00-context.md`. `README.md` explains the problem to a user.
+Read `.claude/memory/MEMORY.md` before you start. It links the facts behind the design. Examples are the root cause, the rules of the fix, the traps of Home Assistant and of the tests, and the live check. When your work touches a topic of a line, read the file of that line. `README.md` explains the problem to a user.
 
 This is a HACS integration, **not** a standalone Python library.
 
 ## Repository layout
 
-- `custom_components/ble_early_att/` — the integration package (domain: `ble_early_att`). The plan lists the modules that the steps add: `watcher.py` (pure logic, no I/O), `monitor.py` (sockets), `config_flow.py`, `diagnostics.py`, `sensor.py`.
+- `custom_components/ble_early_att/` — the integration package (domain: `ble_early_att`): `watcher.py` (pure logic, no I/O), `monitor.py` (sockets and timers), `config_flow.py`, `diagnostics.py`, `sensor.py`.
 - `tests/` — pytest suite (`pytest-asyncio`, `pytest-homeassistant-custom-component`).
 - `conftest.py` — loads the Home Assistant test plugin, also on Windows (see "Testing").
 - `script/update_version.py` — bumps the version (see gotcha below).
 - `plans/` — the plans. Git ignores this folder.
+- `.claude/memory/` — the project memory. Git tracks it, and `CLAUDE.md` imports its index.
 - `justfile` — canonical task runner. `.ruff.toml`, `.pre-commit-config.yaml`, `pyproject.toml` — tooling config.
 - `.github/workflows/` — `validate.yml` (hassfest and HACS), `checks.yml` (pre-commit) and `release_draft.yml` (release drafter).
 
@@ -59,7 +60,7 @@ The pre-commit hooks also run the full test suite, so each commit runs it. They 
 
 ## Agent workflow & boundaries
 
-- **Raise open questions before implementing.** If requirements are ambiguous or a change risks the design in `plans/0.1.0/`, ask first.
+- **Raise open questions before implementing.** If requirements are ambiguous or a change risks the design that `.claude/memory/` describes, ask first.
 - **Use a markdown checklist for multi-step work.** For any multi-stage implementation, write a checklist, tick items off as you complete them, and return the updated list.
 - **Never touch git history or the index.** You are **not** allowed to run `git add`, `git commit`, `git rm`, or anything that stages or commits. Producing a diff or a commit message does not imply permission to commit.
 - **Version-sync gotcha:** the version lives in **both** `pyproject.toml` (`version = "..."`) and `custom_components/ble_early_att/manifest.json` (`"version"`). They must match. Use `just version X.Y.Z` rather than editing either by hand. `tests/test_manifest.py` checks that they match.

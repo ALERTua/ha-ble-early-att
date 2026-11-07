@@ -24,4 +24,5 @@ coverage.xml
 
 plans/
 .env
-.claude/worktrees
+.claude/*
+!.claude/memory/
