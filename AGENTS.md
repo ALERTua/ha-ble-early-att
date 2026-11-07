@@ -18,7 +18,7 @@ This is a HACS integration, **not** a standalone Python library.
 - `script/update_version.py` — bumps the version (see gotcha below).
 - `plans/` — the plans. Git ignores this folder.
 - `justfile` — canonical task runner. `.ruff.toml`, `.pre-commit-config.yaml`, `pyproject.toml` — tooling config.
-- `.github/workflows/` — `validate.yml` (hassfest and HACS) and `checks.yml` (pre-commit).
+- `.github/workflows/` — `validate.yml` (hassfest and HACS), `checks.yml` (pre-commit) and `release_draft.yml` (release drafter).
 
 ## Dev environment & commands
 
